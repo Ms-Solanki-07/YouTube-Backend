@@ -117,4 +117,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-# End of https://mrkandreev.name/snippets/gitignore-generator/#Node
+# a file created by macOS Finder to store custom attributes of a folder, such as icon positions and view options
+.DS_Store
