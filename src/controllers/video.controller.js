@@ -1,7 +1,7 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Video } from "../models/video.model.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
@@ -84,7 +84,7 @@ const getVideoById = asyncHandler(async (req, res) => {
                             _id: 1,
                             username: 1,
                             fullName: 1,
-                            avatar: 1
+                            avatar: 1,
                         }
                     }
                 ]
@@ -127,24 +127,55 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
     // TODO: update details of video - title, description and thumbnail
     const { videoid } = req.params
     const { title, description } = req.body
-    const thumbnailFileLocalPath = Array.isArray(req.files?.thumbnail) && (req.files.thumbnail.length > 0) ? req.files.thumbnail[0].path : null;
+    const userId = req.user._id
+    const thumbnailFileLocalPath = req.file?.path ? req.file?.path : null;
 
     if (!videoid?.trim()) {
         throw new ApiError(401, "Video id missing")
     }
 
-    if(!title || !description){
-        throw new ApiError(401, "title & description both are required")
+    if (!title && !description && !thumbnailFileLocalPath) {
+        throw new ApiError(401, "atleast one field required")
     }
+
+    const video = await Video.findByIdAndUpdate(videoid)
+
+    if(!video){
+        throw new ApiError(401, `video is not found with this id: ${videoid}`)
+    }
+
+    if(video.owner.toString() != userId.toString()){
+        throw new ApiError(400, "Unauthorized to update this video")
+    }
+
+    video.title = title ? title : video.title
+    video.description = description ? description : video.description
 
     if (thumbnailFileLocalPath) {
         const thumbnail = await uploadOnCloudinary(thumbnailFileLocalPath)
+        if (!thumbnail) {
+            throw new ApiError(500, "something went wrong while uploading thumbnail")
+        }
+
+        const isDeletedThumbnail = await deleteFromCloudinary(video.thumbnail, "image")
+
+        video.thumbnail = thumbnail.url
+        await video.save({validateBeforeSave:false})
     }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            video,
+            "Video details Updated successfully"
+        )
+    )
 
 })
 
 export {
     getAllVideos,
     publishAVideo,
-    getVideoById
+    getVideoById,
+    updateVideoDetails
 }
