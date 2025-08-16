@@ -46,8 +46,10 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     //check for images and check of avatar
-    const avatarLocalPath = req.files?.avatar[0]?.path;
+    // const avatarLocalPath = req.files?.avatar[0]?.path;
     // const coverImageLocalPath = req.files?.coverImage[0]?.path; 
+
+    const avatarLocalPath = Array.isArray(req.files?.avatar) && (req.files.avatar.length > 0) ? req.files.avatar[0].path : null;
 
     let coverImageLocalPath;
     if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
@@ -100,6 +102,10 @@ const loginUser = asyncHandler(async (req, res) => {
     // username and email
     if (!(username || email)) {
         throw new ApiError(400, "username or email is required")
+    }
+
+    if (!password) {
+        throw new ApiError(400, "password is required")
     }
 
     // find the user
