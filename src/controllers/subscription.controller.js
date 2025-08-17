@@ -60,7 +60,7 @@ const getUserChannelSubscriber = asyncHandler(async (req, res) => {
         throw new ApiError(403, "User can see only own subscriber, NOT other")
     }
 
-    const subscriber = await Subscription.aggregate([
+    const subscribers = await Subscription.aggregate([
         {
             $match: {
                 channel: new mongoose.Types.ObjectId(channelId)
@@ -92,14 +92,12 @@ const getUserChannelSubscriber = asyncHandler(async (req, res) => {
         }
     ])
 
-    if (!subscriber?.length) {
-        return res.status(200).json(
-            new ApiResponse(200, null, "there is no any subscriber")
-        )
-    }
-
     return res.status(200).json(
-        new ApiResponse(200, subscriber, "subscribers fetched successfully")
+        new ApiResponse(
+            200,
+            subscribers,
+            subscribers.length ? "Subscribers fetched successfully" : "No subscribers found"
+        )
     )
 })
 
@@ -150,14 +148,12 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
         }
     ])
 
-    if (!subscribedChannels?.length) {
-        return res.status(200).json(
-            new ApiResponse(200, null, "there is no any subscribedChannels")
-        )
-    }
-
     return res.status(200).json(
-        new ApiResponse(200, subscribedChannels, "subscribed Channels fetched successfully")
+        new ApiResponse(
+            200,
+            subscribedChannels,
+            subscribedChannels.length ? "Subscribed channels fetched successfully" : "No subscribed channels found"
+        )
     )
 })
 
