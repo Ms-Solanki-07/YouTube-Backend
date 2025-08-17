@@ -8,6 +8,12 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const getAllVideos = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all video based on query, sort, pagination
+
+    
+
+    return res.status(200).json(
+        new ApiResponse(200, "Videos fetched successfully")
+    )
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -129,7 +135,7 @@ const getVideoById = asyncHandler(async (req, res) => {
                 },
                 isliked: {
                     $cond: {
-                        if: {$in: [req.user?._id, "$likes.likedBy"]},
+                        if: { $in: [req.user?._id, "$likes.likedBy"] },
                         then: true,
                         else: false
                     }
@@ -182,7 +188,11 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         throw new ApiError(401, "atleast one field required")
     }
 
-    const video = await Video.findByIdAndUpdate(videoid)
+    if (videoid.length != 24) {
+        throw new ApiError(404, "Video not exist with this id")
+    }
+
+    const video = await Video.findById(videoid)
 
     if (!video) {
         throw new ApiError(401, `video is not found with this id: ${videoid}`)
@@ -217,9 +227,83 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
 
 })
 
+const deleteVideo = asyncHandler(async (req, res) => {
+    const { videoid } = req.params
+    const userId = req.user._id
+    if (!videoid?.trim()) {
+        throw new ApiError(401, "video id missing")
+    }
+
+    if (videoid.length != 24) {
+        throw new ApiError(404, "Video not exist with this id")
+    }
+
+    const video = await Video.findById(videoid)
+
+    if (!video) {
+        throw new ApiError(404, "Video not exist with this id")
+    }
+
+    if (video.owner.toString() !== userId.toString()) {
+        throw new ApiError(400, "Unauthorized to delete this video")
+    }
+
+    const isDeletedFromCloudinary = await deleteFromCloudinary(video.videoFile, "video")
+
+    if (!isDeletedFromCloudinary) {
+        throw new ApiError(500, "Something went wrong while deletion video from cloudinary")
+    }
+
+    const isDeleted = await Video.findByIdAndDelete({ _id: videoid })
+
+    if (!isDeleted) {
+        throw new ApiError(500, "Something went wrong while deletion video document from DB")
+    }
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            "Deletion successfully"
+        )
+    )
+
+})
+
+const togglePublishStatus = asyncHandler(async (req, res) => {
+    const { videoid } = req.params
+    const userId = req.user._id
+
+    if (!videoid?.trim()) {
+        throw new ApiError(400, "video id missing")
+    }
+
+    if (videoid.length != 24) {
+        throw new ApiError(404, "Video not exist with this id")
+    }
+
+    const video = await Video.findById(videoid)
+    
+    if(!video){
+        throw new ApiError(400, "Video NOT exist with this id")
+    }
+
+    if (video.owner.toString() !== userId.toString()) {
+        throw new ApiError(403, "Unauthorized to update publish status");
+    }
+    
+    video.isPublished = !video.isPublished
+    video.save({validateBeforeSave: false})
+
+    return res.status(200).json(
+        new ApiResponse(200, "toggled successfully")
+    )
+})
+
 export {
     getAllVideos,
     publishAVideo,
     getVideoById,
-    updateVideoDetails
+    updateVideoDetails,
+    deleteVideo,
+    togglePublishStatus
 }   
