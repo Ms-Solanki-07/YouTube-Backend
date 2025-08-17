@@ -3,16 +3,84 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Video } from "../models/video.model.js";
-import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiResponse } from "../utils/ApiResponse.js"; 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+    const { page = 1, limit = 10, query, sortBy, sortType} = req.query
     //TODO: get all video based on query, sort, pagination
 
-    
+    if(!query?.trim()){
+        throw new ApiError(400, "Search query is required")
+    }
+
+    const options = {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10)
+    };
+
+    const aggregateOptions = [
+        {
+            $match: {
+                $and: [
+                    {
+                        isPublished: true
+                    },
+                    {
+                        $text: {
+                            $search: query
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            fullName: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                score: {
+                    $meta : "textScore"
+                },
+                owner: {
+                    $first: "$owner"
+                }
+            }
+        }
+    ]
+
+    // sorting logic
+    const sortStage = {};
+    if (query.trim()) {
+        sortStage.score = { $meta: "textScore" };
+    }
+    sortStage[sortBy] = sortType === "asc" ? 1 : -1;
+    aggregateOptions.push({ $sort: sortStage });
+
+    const videos = await Video.aggregatePaginate(Video.aggregate(aggregateOptions), options)
+
+    if(!videos){
+        throw new ApiError(500, "Something went wrong while fetching videos")
+    }
 
     return res.status(200).json(
-        new ApiResponse(200, "Videos fetched successfully")
+        new ApiResponse(
+            200, 
+            videos,
+            "Videos fetched successfully")
     )
 })
 
@@ -282,20 +350,20 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     }
 
     const video = await Video.findById(videoid)
-    
-    if(!video){
+
+    if (!video) {
         throw new ApiError(400, "Video NOT exist with this id")
     }
 
     if (video.owner.toString() !== userId.toString()) {
         throw new ApiError(403, "Unauthorized to update publish status");
     }
-    
+
     video.isPublished = !video.isPublished
-    video.save({validateBeforeSave: false})
+    video.save({ validateBeforeSave: false })
 
     return res.status(200).json(
-        new ApiResponse(200, "toggled successfully")
+        new ApiResponse(200, `toggled successfully [${!video.isPublished} --> ${video.isPublished}]`)
     )
 })
 
