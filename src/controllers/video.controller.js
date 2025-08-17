@@ -80,18 +80,60 @@ const getVideoById = asyncHandler(async (req, res) => {
                 as: "owner",
                 pipeline: [
                     {
+                        $lookup: {
+                            from: "subscriptions",
+                            localField: "_id",
+                            foreignField: "channel",
+                            as: "subscribers"
+                        }
+                    },
+                    {
+                        $addFields: {
+                            subscriberCount: {
+                                $size: "$subscribers"
+                            },
+                            isSubscribed: {
+                                $cond: {
+                                    if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                                    then: true,
+                                    else: false
+                                }
+                            }
+                        }
+                    },
+                    {
                         $project: {
                             _id: 1,
                             username: 1,
                             fullName: 1,
                             avatar: 1,
+                            subscriberCount: 1,
+                            isSubscribed: 1
                         }
                     }
                 ]
             }
         },
         {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "video",
+                as: "likes"
+            }
+        },
+        {
             $addFields: {
+                totalLikes: {
+                    $size: "$likes"
+                },
+                isliked: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$likes.likedBy"]},
+                        then: true,
+                        else: false
+                    }
+                },
                 owner: { $first: "$owner" }
             }
         },
@@ -102,10 +144,12 @@ const getVideoById = asyncHandler(async (req, res) => {
                 title: 1,
                 description: 1,
                 views: 1,
+                totalLikes: 1,
+                isliked: 1,
                 isPublished: 1,
                 duration: 1,
-                updatedAt: 1,
-                owner: 1
+                owner: 1,
+                updatedAt: 1
             }
         }
     ])
@@ -140,11 +184,11 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
 
     const video = await Video.findByIdAndUpdate(videoid)
 
-    if(!video){
+    if (!video) {
         throw new ApiError(401, `video is not found with this id: ${videoid}`)
     }
 
-    if(video.owner.toString() != userId.toString()){
+    if (video.owner.toString() != userId.toString()) {
         throw new ApiError(400, "Unauthorized to update this video")
     }
 
@@ -160,7 +204,7 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         const isDeletedThumbnail = await deleteFromCloudinary(video.thumbnail, "image")
 
         video.thumbnail = thumbnail.url
-        await video.save({validateBeforeSave:false})
+        await video.save({ validateBeforeSave: false })
     }
 
     return res.status(200).json(
@@ -178,4 +222,4 @@ export {
     publishAVideo,
     getVideoById,
     updateVideoDetails
-}
+}   
