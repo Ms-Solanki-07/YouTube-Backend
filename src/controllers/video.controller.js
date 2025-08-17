@@ -140,6 +140,10 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiError(400, "videoId is missing")
     }
 
+    if (videoid?.length != 24) {
+        throw new ApiError(404, "Video not exist with this id")
+    }
+
     const video = await Video.aggregate([
         {
             $match: {
@@ -256,7 +260,7 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         throw new ApiError(401, "atleast one field required")
     }
 
-    if (videoid.length != 24) {
+    if (videoid?.length != 24) {
         throw new ApiError(404, "Video not exist with this id")
     }
 
