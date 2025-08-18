@@ -260,7 +260,7 @@ const updateVideoDetails = asyncHandler(async (req, res) => {
         throw new ApiError(401, "atleast one field required")
     }
 
-    if (videoid?.length != 24) {
+    if (!isValidObjectId(videoid)) {
         throw new ApiError(404, "Video not exist with this id")
     }
 
