@@ -128,6 +128,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
                 ]
             }
         },
+        { $addFields: { owner: { $first: "$owner" } } },
         {
             $lookup: {
                 from: "videos",
@@ -157,6 +158,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
                             ]
                         }
                     },
+                    { $addFields: { owner: { $first: "$owner" } } },
                     {
                         $project: {
                             videoFile: 1,
@@ -210,7 +212,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     }
 
     const video = await Video.findById(videoId)
-    if(!video){
+    if (!video) {
         throw new ApiError(401, "Video NOT found")
     }
 
@@ -219,7 +221,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     }
 
     playlist.videos.push(videoId)
-    const newPlaylist = await playlist.save({validateBeforeSave: false})
+    const newPlaylist = await playlist.save({ validateBeforeSave: false })
 
     if (!newPlaylist) {
         throw new ApiError(500, "Something went wrong while adding video to playlist")
@@ -253,15 +255,15 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     }
 
     if (userId?.toString() !== playlist.owner.toString()) {
-        throw new ApiError(400, "Unauthorized User")
+        throw new ApiError(400, "Unauthorized to remove video from playlist")
     }
 
     if (!playlist.videos.includes(videoId)) {
         throw new ApiError(400, "Video is not exist in playlist")
     }
 
-    playlist.videos = playlist.videos.filter((vid) => {vid.toString() !== videoId.toString()})
-    const newPlaylist = await playlist.save({validateBeforeSave: false})
+    playlist.videos = playlist.videos.filter((vid) => vid.toString() !== videoId.toString())
+    const newPlaylist = await playlist.save({ validateBeforeSave: false })
 
     if (!newPlaylist) {
         throw new ApiError(500, "Something went wrong while removing video from playlist")
@@ -273,7 +275,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
 })
 
 const deletePlaylist = asyncHandler(async (req, res) => {
-    const {playlistId} = req.params
+    const { playlistId } = req.params
     const userId = req.user?._id
 
     if (!playlistId?.trim()) {
@@ -283,7 +285,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
     if (!isValidObjectId(playlistId)) {
         throw new ApiError(400, "PlaylistID is invalid")
     }
-    
+
     const playlist = await Playlist.findById(playlistId)
     if (!playlist) {
         throw new ApiError(401, "Playlist not found")
@@ -305,8 +307,8 @@ const deletePlaylist = asyncHandler(async (req, res) => {
 })
 
 const updatePlaylist = asyncHandler(async (req, res) => {
-    const {playlistId} = req.params
-    const {name, description} = req.body
+    const { playlistId } = req.params
+    const { name, description } = req.body
     const userId = req.user?._id
 
     if (!playlistId?.trim()) {
@@ -317,7 +319,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
         throw new ApiError(400, "PlaylistID is invalid")
     }
 
-    if(!name.trim() || !description.trim()){
+    if (!(name || description)) {
         throw new ApiError(401, "Atleast one field required")
     }
 
@@ -327,15 +329,15 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     }
 
     if (userId?.toString() !== playlist.owner.toString()) {
-        throw new ApiError(400, "Unauthorized User")
+        throw new ApiError(400, "Unauthorized to update this playlist")
     }
 
     playlist.name = name ? name : playlist.name
     playlist.description = description ? description : playlist.description
 
-    const updatedPlaylist = await playlist.save({validateBeforeSave: false})
+    const updatedPlaylist = await playlist.save({ validateBeforeSave: false })
 
-    if(!updatedPlaylist){
+    if (!updatedPlaylist) {
         throw new ApiError(500, "Something went wrong while updating playlist details")
     }
 
