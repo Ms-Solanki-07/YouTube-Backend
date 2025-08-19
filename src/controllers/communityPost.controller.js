@@ -37,9 +37,37 @@ const getUserCommunityPost = asyncHandler(async (req, res) => {
         throw new ApiError(401, "Invalid user id")
     }
 
-    const communityPosts = await CommunityPost.find({
-        owner: userId
-    })
+    const communityPosts = await CommunityPost.aggregate([
+        {
+            $match: {
+                owner: userId
+            }
+        },
+        {
+            $lookup: {
+                from: "user",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner",
+                pipeline: [
+                    {
+                        $project: {
+                            fullName: 1, 
+                            username: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                owner: {
+                    $first: "$owner"
+                }
+            }
+        }
+    ])
 
     return res.status(200).json(
         new ApiResponse(
