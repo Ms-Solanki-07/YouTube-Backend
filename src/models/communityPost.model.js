@@ -1,6 +1,6 @@
-import mongoose, {Schema} from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-const tweetSchema = new Schema(
+const communityPostSchema = new Schema(
     {
         owner: {
             type: Schema.Types.ObjectId,
@@ -16,4 +16,4 @@ const tweetSchema = new Schema(
     }
 )
 
-export const Tweet = mongoose.model("Tweet", tweetSchema)
+export const CommunityPost = mongoose.model("CommunityPost", communityPostSchema)
