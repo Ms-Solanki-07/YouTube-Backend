@@ -3,13 +3,13 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Video } from "../models/video.model.js";
-import { ApiResponse } from "../utils/ApiResponse.js"; 
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType} = req.query
+    const { page = 1, limit = 10, query, sortBy, sortType } = req.query
     //TODO: get all video based on query, sort, pagination
 
-    if(!query?.trim()){
+    if (!query?.trim()) {
         throw new ApiError(400, "Search query is required")
     }
 
@@ -53,7 +53,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
         {
             $addFields: {
                 score: {
-                    $meta : "textScore"
+                    $meta: "textScore"
                 },
                 owner: {
                     $first: "$owner"
@@ -72,13 +72,13 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
     const videos = await Video.aggregatePaginate(Video.aggregate(aggregateOptions), options)
 
-    if(!videos){
+    if (!videos) {
         throw new ApiError(500, "Something went wrong while fetching videos")
     }
 
     return res.status(200).json(
         new ApiResponse(
-            200, 
+            200,
             videos,
             "Videos fetched successfully")
     )

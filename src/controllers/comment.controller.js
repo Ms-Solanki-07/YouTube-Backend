@@ -24,12 +24,12 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const aggregateOptions = [
         {
             $match: {
-                video: videoId
+                video: new mongoose.Types.ObjectId(videoId)
             }
         },
         {
             $lookup: {
-                from: "owner",
+                from: "users",
                 localField: "owner",
                 foreignField: "_id",
                 as: "owner",
@@ -37,7 +37,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
                     {
                         $project: {
                             fullName: 1,
-                            username: 1, 
+                            username: 1,
                             avatar: 1
                         }
                     }
@@ -47,6 +47,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
         { $addFields: { owner: { $first: "$owner" } } },
         {
             $project: {
+                _id: 1,
                 content: 1,
                 owner: 1
             }
@@ -55,7 +56,7 @@ const getVideoComments = asyncHandler(async (req, res) => {
 
     const comments = await Comment.aggregatePaginate(Comment.aggregate(aggregateOptions), options)
 
-    if(!comments){
+    if (!comments) {
         throw new ApiError(500, "Something went wrong while fetching comments")
     }
 
@@ -155,7 +156,7 @@ const deleteComment = asyncHandler(async (req, res) => {
     }
 
     return res.status(200).json(
-        new ApiResponse(200, deletedComment, "Comment updated successfully")
+        new ApiResponse(200, deletedComment, "Comment deleted successfully")
     )
 })
 

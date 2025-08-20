@@ -1,7 +1,8 @@
-import { isValidObjectId } from "mongoose"
+import mongoose, { isValidObjectId } from "mongoose"
 import { CommunityPost } from "../models/communityPost.model.js"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
+import { asyncHandler } from "../utils/asyncHandler.js"
 
 
 const createCommunityPost = asyncHandler(async (req, res) => {
@@ -27,9 +28,9 @@ const createCommunityPost = asyncHandler(async (req, res) => {
 })
 
 const getUserCommunityPost = asyncHandler(async (req, res) => {
-    const {userId} = req.params
+    const { userId } = req.params
 
-    if(!userId?.trim){
+    if (!userId?.trim()) {
         throw new ApiError(400, "user id missing")
     }
 
@@ -40,19 +41,19 @@ const getUserCommunityPost = asyncHandler(async (req, res) => {
     const communityPosts = await CommunityPost.aggregate([
         {
             $match: {
-                owner: userId
+                owner: new mongoose.Types.ObjectId(userId)
             }
         },
         {
             $lookup: {
-                from: "user",
+                from: "users",
                 localField: "owner",
                 foreignField: "_id",
                 as: "owner",
                 pipeline: [
                     {
                         $project: {
-                            fullName: 1, 
+                            fullName: 1,
                             username: 1,
                             avatar: 1
                         }
@@ -71,7 +72,8 @@ const getUserCommunityPost = asyncHandler(async (req, res) => {
 
     return res.status(200).json(
         new ApiResponse(
-            200, 
+            200,
+            communityPosts,
             communityPosts?.length ? "Community posts fetched successfully" : "This User has no Community post"
         )
     )

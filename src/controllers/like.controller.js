@@ -2,6 +2,7 @@ import mongoose, { isValidObjectId } from "mongoose"
 import { ApiError } from "../utils/ApiError.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 import { Like } from "../models/like.model.js"
+import { asyncHandler } from "../utils/asyncHandler.js"
 
 
 const toggleVideoLike = asyncHandler(async (req, res) => {
@@ -63,13 +64,13 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
     }
 
     const existingLike = await Like.findOne({
-        commenet: commentId,
+        comment: commentId,
         likedBy: userId
     })
 
     if (existingLike) {
         const unLike = await Like.findOneAndDelete({
-            commenet: commentId,
+            comment: commentId,
             likedBy: userId
         })
 
@@ -84,7 +85,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
 
     const newLike = await Like.create({
         likedBy: userId,
-        video: videoId
+        comment: commentId
     })
 
     if (!newLike) {
@@ -148,7 +149,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     const likedVideos = await Like.aggregate([
         {
             $match: {
-                likedBy: userId
+                likedBy: new mongoose.Types.ObjectId(userId)
             }
         },
         {
@@ -156,7 +157,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
                 from: "videos",
                 localField: "video",
                 foreignField: "_id",
-                as: "videos",
+                as: "video",
                 pipeline: [
                     {
                         $lookup: {
@@ -167,7 +168,7 @@ const getLikedVideos = asyncHandler(async (req, res) => {
                             pipeline: [
                                 {
                                     $project: {
-                                        username: 1, 
+                                        username: 1,
                                         fullName: 1,
                                         avatar: 1
                                     }
@@ -176,13 +177,28 @@ const getLikedVideos = asyncHandler(async (req, res) => {
                         }
                     },
                     {
-                        $addFields:{
+                        $addFields: {
                             owner: {
                                 $first: "$owner"
                             }
                         }
                     }
                 ]
+            }
+        },
+        {
+            $addFields: {
+                video: { $first: "$video" }
+            }
+        },
+        {
+            $match: {
+                video: { $exists: true, $ne: null }   // ✅ filter out empty lookups
+            }
+        },
+        {
+            $project: {
+                video: 1
             }
         }
     ])
